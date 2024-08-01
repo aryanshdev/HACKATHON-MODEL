@@ -17,9 +17,8 @@ def load_data(file_name):
 def train_random_forest(train_data):
     try:
         X_train = train_data.drop(columns=['fetal_health'])  # Features
-        y_train = train_data['fetal_health']  # Target variable
+        y_train = train_data['fetal_health']  # 
 
-        # Define parameters for the Random Forest
         criterion = 'gini'
         max_depth = 30
         n_estimators = 500
