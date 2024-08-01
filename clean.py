@@ -196,7 +196,7 @@ def handle_nonnumeric_missing_vals_fill(path, columns):
     return result
 
 # Takes df and column names of "NON-NUMERIC FIELDS", return df and message
-def drop_rows_with_nonnumeric_missing_vals(path, columns):
+def handle_nonnumeric_missing_vals_drop(path, columns):
     df =pd.read_csv(path)
     message=""
     status=""
