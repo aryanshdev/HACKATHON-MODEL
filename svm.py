@@ -68,6 +68,8 @@ def evaluate_classifier(clf, kernel, C, gamma, X_train, y_train, y_train_pred, X
         model_filename = 'svm_model.pkl'
         joblib.dump(clf, model_filename)
         print(f"Trained model saved as {model_filename}")
+
+        return train_accuracy,test_accuracy
     except Exception as e:
         print("Error occurred while evaluating the SVM classifier: ", str(e))
 

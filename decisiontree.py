@@ -64,6 +64,8 @@ def evaluate_decision_tree(clf, criterion, max_depth, X_train, y_train, y_train_
         model_filename = 'decision_tree_model.pkl'
         joblib.dump(clf, model_filename)
         print(f"Trained model saved as {model_filename}")
+
+        return train_accuracy,test_accuracy
     except Exception as e:
         print("Error occurred while evaluating the decision tree: ", str(e))
 

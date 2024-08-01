@@ -67,6 +67,8 @@ def evaluate_classifier(clf, criterion, max_depth, n_estimators, min_samples_spl
         model_filename = 'random_forest_model.pkl'
         joblib.dump(clf, model_filename)
         print(f"Trained model saved as {model_filename}")
+        return train_accuracy,test_accuracy
+
     except Exception as e:
         print("Error occurred while evaluating the random forest classifier: ", str(e))
 
