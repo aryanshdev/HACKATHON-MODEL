@@ -15,10 +15,11 @@ def createDataFrame(path):
         df =pd.read_csv(path)
         message="Data Frame for .csv is created"
     elif file_extension in [".xlsx",".xls"]:
-        df = pd.read_excel(path)
+        df = pd.read_excel(path, engine='openpyxl')
         message="Data frame for .xlsx or .xls is created"
     else:
         message= "Unsupported File extension, please input csv, xlsx or xls file type."
+
 
     return df,message
 
@@ -98,7 +99,7 @@ def remove_duplicates(df):
     return df_cleaned, message
 
 
-# Takes input of df and returns output of df
+# Takes input of df and returns output of df(DO NOT OVERWRITE ORIGINAL DF) and mssg
 def check_missing_values(df):
     """
     Check missing values in each column of the DataFrame.
@@ -122,7 +123,7 @@ def check_missing_values(df):
     return missing_summary,message
 
 # Takes df and column names of "NON-NUMERIC FIELDS", returns df and message
-def handle_nonnumeric_missing_vals(df, columns):
+def fill_handle_nonnumeric_missing_vals(df, columns):
     """
     Fill missing values in a specified non-numeric column with 'Unknown'.
     
@@ -150,6 +151,41 @@ def handle_nonnumeric_missing_vals(df, columns):
     message = " ".join(messages)
     return df, message
 
+# Takes df and column names of "NON-NUMERIC FIELDS", return df and message
+def drop_rows_with_nonnumeric_missing_vals(df, columns):
+    """
+    Drop rows where specified non-numeric columns have missing values.
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame.
+    columns (str): Comma-separated string of non-numeric columns to check for missing values.
+    
+    Returns:
+    pd.DataFrame: DataFrame with rows dropped where specified columns have missing values.
+    int: The count of rows that were dropped.
+    str: Message indicating the result of the operation.
+    """
+    columns_to_check = [col.strip() for col in columns.split(',')]
+    
+    # Ensure all specified columns are in the DataFrame
+    if not all(col in df.columns for col in columns_to_check):
+        missing_cols = [col for col in columns_to_check if col not in df.columns]
+        return df, f"Columns {', '.join(missing_cols)} not found in DataFrame."
+    
+    # Count the number of rows with missing values in the specified columns before dropping
+    initial_count = df.shape[0]
+    
+    # Drop rows where any of the specified columns have missing values
+    df_cleaned = df.dropna(subset=columns_to_check)
+    
+    # Count the number of rows dropped
+    rows_dropped = initial_count - df_cleaned.shape[0]
+    
+    message = f"Dropped {rows_dropped} rows where specified columns had missing values."
+    
+    return df_cleaned, message
+
+
 # Takes df and column names of "NUMERIC FILEDS", returns df and message
 def handle_numeric_missing_vals(df, columns):
     """
@@ -171,7 +207,7 @@ def handle_numeric_missing_vals(df, columns):
     for column in columns_to_handle:
         if column in df.columns:
             if pd.api.types.is_numeric_dtype(df[column]):
-                mean_value = df[column].mean()
+                mean_value = df[column].median()
                 df[column] = df[column].fillna(mean_value)
                 mean_values[column] = mean_value
                 messages.append(f"Filled missing values in numeric column '{column}' with mean value {mean_value:.2f}.")
@@ -226,15 +262,6 @@ def convert_to_numeric(df, columns):
 
 # Creates a file and returns back a custom message 
 def save_dataframe_to_csv(df):
-    """
-    Save the DataFrame to a CSV file named 'clean.csv' and return a message.
-    
-    Parameters:
-    df (pd.DataFrame): The DataFrame to save to a CSV file.
-    
-    Returns:
-    str: Message indicating the result of the file creation process.
-    """
     try:
         # Save the DataFrame to 'clean.csv'
         df.to_csv('clean.csv', index=False)
@@ -379,74 +406,92 @@ def drop_rows_without_target(df, target_column):
 # --------------------------------TESTING CODE-------------------------
 
 current_directory = os.getcwd()  # Get the current working directory
+
+
 file_path = find_file_in_directory(current_directory)
 
-file_path="fetal_health_modified_2.csv"
+file_path="uncleaned bike sales data.xlsx"
 df,message = createDataFrame(file_path)
 print(message)
 
+print("Cleaning column names")
 df,message = clean_column_names(df)
 print(message)
 print(df)
-# Column name changes:
-# 'ID' -> 'id'
-# 'Name' -> 'name'
-# 'Age' -> 'age'
-# 'Salary' -> 'salary'
-# 'Department' -> 'department'
-# 'JoiningDate' -> 'joiningdate'
-# 'Location' -> 'location'
-# 'Gender' -> 'gender'
-# 'Experience' -> 'experience'
-# 'PerformanceRating' -> 'performancerating'
 
+print("Dealing with duplicate entries")
+df,message=remove_duplicates(df)
+print(df)
+print(message)
 
 missing_summary_df,message=check_missing_values(df)
 print(missing_summary_df)
 print(message)
 
-# numericColumns=input("Enter the Numeric columns: ")
-# df,message=handle_nonnumeric_missing_vals(df,numericColumns)
-# print(df)
-# print(message)
+nonNumeric=input("Enter the Non-Numeric columns(FILL): ")
+df,message=fill_handle_nonnumeric_missing_vals(df,nonNumeric)
+print(df)
+print(message)
+
+missing_summary_df,message=check_missing_values(df)
+print(missing_summary_df)
+print(message)
 
 
-# nonNumericColumns=input("Enter the Non-Numeric columns: ")
-# df,message=handle_numeric_missing_vals(df,nonNumericColumns)
-# print(df)
-# print(message)
+nonNumeric=input("Enter the Non-Numeric columns(DROP): ")
+df,message=drop_rows_with_nonnumeric_missing_vals(df,nonNumeric)
+print(df)
+print(message)
+
+missing_summary_df,message=check_missing_values(df)
+print(missing_summary_df)
+print(message)
+
+
+nonNumericColumns=input("Enter the Numeric columns: ")
+df,message=handle_numeric_missing_vals(df,nonNumericColumns)
+print(df)
+print(message)
+
+missing_summary_df,message=check_missing_values(df)
+print(missing_summary_df)
+print(message)
+
 
 columnsToBeDropped=input("Enter the columns seperated by comma, that needs to be dropped.")
 df,message=drop_columns_from_string(df,columnsToBeDropped)
 print(df)
 print(message)
 
-# df,message=normalize_date_column(df,"joiningdate")
-# print(df)
-# print(message)
-
-df_type=get_column_datatypes(df);
-print(df_type)
-
-df,message=one_hot_encoding(df,"fetal_health")
-print(df)
-print(message)
-
-
-df_type=get_column_datatypes(df);
-print(df_type)
-
-df,message=drop_rows_without_target(df,"fetal_health")
-print(df)
-print(message)
-
-df,message=convert_to_numeric(df,"fetal_health")
+date_column=input("Enter the date column: ")
+df,message=normalize_date_column(df,date_column)
 print(df)
 print(message)
 
 df_type=get_column_datatypes(df);
 print(df_type)
 
-df,message=remove_duplicates(df)
+
+target=input("OHE: enter target variable ")
+df,message=one_hot_encoding(df,target)
 print(df)
 print(message)
+
+
+df_type=get_column_datatypes(df);
+print(df_type)
+
+df,message=drop_rows_without_target(df,input("Enter target column name "))
+print(df)
+print(message)
+
+columnnnames=input("Enter the columns that need to be converted to numeric ")
+df,message=convert_to_numeric(df,columnnnames)
+print(df)
+print(message)
+
+df_type=get_column_datatypes(df);
+print(df_type)
+
+print(df)
+ṇ

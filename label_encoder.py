@@ -11,7 +11,7 @@ def encode_target_column(df, target_column):
 
         print("Unique values after encoding:", df['target'].unique())
         print(df)
-        label_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+        label_mapping = dict(zip (label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
      
         # Save the label encoder to a file
         joblib.dump(label_encoder, 'label_encoder.pkl')
