@@ -16,11 +16,11 @@ def load_data(file_name):
 
 def train_decision_tree(train_data, test_data):
     try:
-        X_train = train_data.drop(columns=['target'])  # Features
-        y_train = train_data['target']  # Target variable
+        X_train = train_data.drop(columns=['fetal_health'])  # Features
+        y_train = train_data['fetal_health']  # Target variable
 
-        X_test = test_data.drop(columns=['target'])  # Features
-        y_test = test_data['target']  # Target variable
+        X_test = test_data.drop(columns=['fetal_health'])  # Features
+        y_test = test_data['fetal_health']  # Target variable
 
         # Define parameters for the Decision Tree
         criterion = 'gini'
@@ -69,13 +69,23 @@ def evaluate_decision_tree(clf, criterion, max_depth, X_train, y_train, y_train_
 
 if __name__ == "__main__":
     # Define the paths to the training and testing files
-    train_file = 'X_train_Y_train.csv'
-    test_file = 'X_test_Y_test.csv'
+    X_train_file = 'X_train.csv'
+    X_test_file = 'X_test.csv'
+
+    Y_train_file = 'y_train.csv'
+    Y_test_file = 'y_test.csv'
     
     # Load data
-    train_data = load_data(train_file)
-    test_data = load_data(test_file)
+    X_train_data = load_data(X_train_file)
+    X_test_data = load_data(X_test_file)
+
+    y_train_data = load_data(Y_train_file)
+    y_test_data = load_data(Y_test_file)
     
+
+    train_data = pd.concat([X_train_data, y_train_data], axis=1)
+    test_data = pd.concat([X_test_data, y_test_data], axis=1)
+
     # Train the Decision Tree classifier
     clf, criterion, max_depth, X_train, y_train, y_train_pred, X_test, y_test, y_test_pred = train_decision_tree(train_data, test_data)
     

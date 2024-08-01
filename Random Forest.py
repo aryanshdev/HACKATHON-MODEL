@@ -14,29 +14,30 @@ def load_data(file_name):
         print(f"Error occurred while loading the data from {file_name}: ", str(e))
 
 
-
 def train_random_forest(train_data):
     try:
-        X_train = train_data.drop(columns=['target'])  # Features
-        y_train = train_data['target']  # Target variable
+        X_train = train_data.drop(columns=['fetal_health'])  # Features
+        y_train = train_data['fetal_health']  # Target variable
 
         # Define parameters for the Random Forest
         criterion = 'gini'
-        max_depth = None
-        n_estimators = 100
+        max_depth = 30
+        n_estimators = 500
+        min_samples_split = 2
     
         # Initialize and train the Random Forest classifier
-        rf_clf = RandomForestClassifier(criterion=criterion, max_depth=max_depth, n_estimators=n_estimators, random_state=42)
+        rf_clf = RandomForestClassifier(criterion=criterion, max_depth=max_depth, n_estimators=n_estimators, min_samples_split=min_samples_split, random_state=42)
         rf_clf.fit(X_train, y_train)
 
         # Make predictions on the training data
         y_train_pred = rf_clf.predict(X_train)
         
-        return rf_clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred
+        return rf_clf, criterion, max_depth, n_estimators, min_samples_split, X_train, y_train, y_train_pred
     except Exception as e:
         print("Error occurred while training the random forest classifier: ", str(e))
 
-def evaluate_classifier(clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred, X_test, y_test):
+
+def evaluate_classifier(clf, criterion, max_depth, n_estimators, min_samples_split, X_train, y_train, y_train_pred, X_test, y_test):
     try:
         # Make predictions on the testing data
         y_test_pred = clf.predict(X_test)
@@ -55,6 +56,7 @@ def evaluate_classifier(clf, criterion, max_depth, n_estimators, X_train, y_trai
         print(f"CRITERION: {criterion}")
         print(f"MAX_DEPTH: {max_depth}")
         print(f"N_ESTIMATORS: {n_estimators}")
+        print(f"MIN_SAMPLES_SPLIT: {min_samples_split}")
         print(f"TRAINING ACCURACY: {train_accuracy * 100:.2f}%")
         print(f"TESTING ACCURACY: {test_accuracy * 100:.2f}%")
         print("\nTraining Classification Report:\n", train_report)
@@ -69,18 +71,28 @@ def evaluate_classifier(clf, criterion, max_depth, n_estimators, X_train, y_trai
     except Exception as e:
         print("Error occurred while evaluating the random forest classifier: ", str(e))
 
+
 if __name__ == "__main__":
     # Define the paths to the training and testing files
-    train_file = 'X_train_Y_train.csv'
-    test_file = 'X_test_Y_test.csv'
-
-    train_data = load_data(train_file)
-    test_data = load_data(test_file)
+    X_train_file = 'X_train.csv'
+    X_test_file = 'X_test.csv'
+    Y_train_file = 'y_train.csv'
+    Y_test_file = 'y_test.csv'
     
-    # Train the Random Forest classifier
-    rf_clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred = train_random_forest(train_data)
+    # Load data
+    X_train_data = load_data(X_train_file)
+    X_test_data = load_data(X_test_file)
+    y_train_data = load_data(Y_train_file)
+    y_test_data = load_data(Y_test_file)
     
-    # Evaluate the Random Forest classifier
-    X_test = test_data.drop(columns=['target'])  # Features
-    y_test = test_data['target']  # Target variable
-    evaluate_classifier(rf_clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred, X_test, y_test)
+    if X_train_data is not None and X_test_data is not None and y_train_data is not None and y_test_data is not None:
+        train_data = pd.concat([X_train_data, y_train_data], axis=1)
+        test_data = pd.concat([X_test_data, y_test_data], axis=1)
+        
+        # Train the Random Forest classifier
+        rf_clf, criterion, max_depth, n_estimators, min_samples_split, X_train, y_train, y_train_pred = train_random_forest(train_data)
+        
+        # Evaluate the Random Forest classifier
+        X_test = test_data.drop(columns=['fetal_health'])  # Features
+        y_test = test_data['fetal_health']  # Target variable
+        evaluate_classifier(rf_clf, criterion, max_depth, n_estimators, min_samples_split, X_train, y_train, y_train_pred, X_test, y_test)

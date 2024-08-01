@@ -18,8 +18,8 @@ def load_data(file_name):
 def train_svm(train_data):
     try:
         # Split the data into features and target variable
-        X_train = train_data.drop(columns=['target'])  # Features
-        y_train = train_data['target']  # Target variable
+        X_train = train_data.drop(columns=['fetal_health'])  # Features
+        y_train = train_data['fetal_health']  # Target variable
 
         # Define parameters for the SVM
         kernel = 'rbf'
@@ -74,17 +74,26 @@ def evaluate_classifier(clf, kernel, C, gamma, X_train, y_train, y_train_pred, X
 
 if __name__ == "__main__":
     # Define the paths to the training and testing files
-    train_file = 'X_train_Y_train.csv'
-    test_file = 'X_test_Y_test.csv'
+    X_train_file = 'X_train.csv'
+    X_test_file = 'X_test.csv'
 
-    # Load the data
-    train_data = load_data(train_file)
-    test_data = load_data(test_file)
+    Y_train_file = 'y_train.csv'
+    Y_test_file = 'y_test.csv'
+    
+    # Load data
+    X_train_data = load_data(X_train_file)
+    X_test_data = load_data(X_test_file)
+
+    y_train_data = load_data(Y_train_file)
+    y_test_data = load_data(Y_test_file)
+
+    train_data = pd.concat([X_train_data, y_train_data], axis=1)
+    test_data = pd.concat([X_test_data, y_test_data], axis=1)
 
     # Train the SVM classifier
     svm_clf, kernel, C, gamma, X_train, y_train, y_train_pred = train_svm(train_data)
 
     # Evaluate the SVM classifier
-    X_test = test_data.drop(columns=['target'])  # Features
-    y_test = test_data['target']  # Target variable
+    X_test = test_data.drop(columns=['fetal_health'])  # Features
+    y_test = test_data['fetal_health']  # Target variable
     evaluate_classifier(svm_clf, kernel, C, gamma, X_train, y_train, y_train_pred, X_test, y_test)
