@@ -5,21 +5,22 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import OneHotEncoder
 
 
-# Call to createdataframe
+# Takes in path, returns df and message
 def createDataFrame(path):
 
     file_extension = os.path.splitext(path)[1]
-
+    df=None
+    message=""
     if(file_extension==".csv"):
         df =pd.read_csv(path)
-
+        message="Data Frame for .csv is created"
     elif file_extension in [".xlsx",".xls"]:
         df = pd.read_excel(path)
-
+        message="Data frame for .xlsx or .xls is created"
     else:
-        return "Unsupported File extension, please input csv, xlsx or xls file type."
+        message= "Unsupported File extension, please input csv, xlsx or xls file type."
 
-    return df
+    return df,message
 
 # Can only return the 1st valid file it encounters.
 def find_file_in_directory(directory, extensions= ['.csv', '.xlsx', '.xls']):
@@ -30,7 +31,7 @@ def find_file_in_directory(directory, extensions= ['.csv', '.xlsx', '.xls']):
             return os.path.join(directory, file_name)
     return None
 
-# cleans column names; gives back df and a message
+# takes df param and gives back df and a message
 def clean_column_names(df):
     # Original column names
     original_columns = df.columns.tolist()
@@ -48,11 +49,11 @@ def clean_column_names(df):
             changes.append(f"'{orig}' -> '{cleaned}'")
     
     if changes:
-        changes_description = "Column name changes:\n" + "\n".join(changes)
+        message = "Column name changes:\n" + "\n".join(changes)
     else:
-        changes_description = "No changes to column names."
+        message = "No changes to column names."
     
-    return df, changes_description
+    return df, message
 
 
 # Takes in the dataframe and a String of the columns to be dropped; seperated by comma, returns df and message
@@ -183,7 +184,7 @@ def handle_numeric_missing_vals(df, columns):
     return df, message
 
 
-# Convert to Numeric
+# Takes df and column names and returns df and message
 def convert_to_numeric(df, columns):
     """
     Convert specified columns in the DataFrame to numeric values (int or float).
@@ -283,7 +284,7 @@ def normalize_date_column(df, date_column):
     except Exception as e:
         return df, f"An error occurred while normalizing the date column '{date_column}': {e}"
 
-
+# Input a df and target_col name and returns df and message
 def one_hot_encoding(df, target_column):
     """
     Apply One-Hot Encoding to categorical columns and move the target column to the end of the DataFrame.
@@ -294,17 +295,25 @@ def one_hot_encoding(df, target_column):
     
     Returns:
     pd.DataFrame: Updated DataFrame with One-Hot Encoded columns and target column at the end.
+    str: Message indicating the result of the operation.
     """
     # Check if target_column is in the DataFrame
     if target_column not in df.columns:
-        raise ValueError(f"Target column '{target_column}' not found in DataFrame.")
+        return df, f"Target column '{target_column}' not found in DataFrame."
     
     # Extract the target column
-    target = df[target_column]
+    df_target = df[target_column]
+    
+    # Drop the target column from the DataFrame
+    df = df.drop(columns=[target_column])
     
     # Select categorical columns for one-hot encoding
     categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
     
+    if not categorical_columns:
+        df[target_column] = df_target.values 
+        return df, f"No categorical columns found for one-hot encoding."
+
     # Initialize OneHotEncoder
     encoder = OneHotEncoder(sparse_output=False, drop='first')
     
@@ -317,12 +326,13 @@ def one_hot_encoding(df, target_column):
     # Concatenate the one-hot encoded dataframe with the original dataframe (excluding categorical columns)
     df_encoded = pd.concat([df.drop(categorical_columns, axis=1), one_hot_df], axis=1)
     
-    # Add the target column to the end
-    df_encoded[target_column] = target
+    # Add the target column back to the end
+    df_encoded[target_column] = df_target.values  # Ensure proper alignment
     
-    return df_encoded
+    return df_encoded, f"One-Hot Encoding applied to columns: {', '.join(categorical_columns)}. Target column '{target_column}' is at the end."
 
 
+# Takes df from user and returns a df_type(NOT SAME AS INPUT df; DO NOT OVERWRITE INPUT DF)
 def get_column_datatypes(df):
     """
     Get the data type of each column in the DataFrame.
@@ -339,13 +349,41 @@ def get_column_datatypes(df):
     return column_dtypes
 
 
+# takes in df, target_column String and returns df and message
+def drop_rows_without_target(df, target_column):
+    """
+    Drop rows where the target column has missing values.
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame.
+    target_column (str): The name of the target column.
+    
+    Returns:
+    pd.DataFrame: DataFrame with rows dropped where the target column has missing values.
+    int: The count of rows that were dropped.
+    """
+    if target_column not in df.columns:
+        return df, f"Target column '{target_column}' not found in DataFrame."
+    
+    # Count the number of rows with missing target values before dropping
+    initial_count = df.shape[0]
+    
+    # Drop rows where the target column has missing values
+    df_cleaned = df.dropna(subset=[target_column])
+    
+    # Count the number of rows dropped
+    rows_dropped = f"Rows dropped count: {initial_count - df_cleaned.shape[0]}"
+    
+    return df_cleaned, rows_dropped
+
 # --------------------------------TESTING CODE-------------------------
 
 current_directory = os.getcwd()  # Get the current working directory
 file_path = find_file_in_directory(current_directory)
 
-file_path="mock_performance_data.csv"
-df = createDataFrame(file_path)
+file_path="fetal_health_modified_2.csv"
+df,message = createDataFrame(file_path)
+print(message)
 
 df,message = clean_column_names(df)
 print(message)
@@ -363,9 +401,9 @@ print(df)
 # 'PerformanceRating' -> 'performancerating'
 
 
-# missing_summary_df,message=check_missing_values(df)
-# print(missing_summary_df)
-# print(message)
+missing_summary_df,message=check_missing_values(df)
+print(missing_summary_df)
+print(message)
 
 # numericColumns=input("Enter the Numeric columns: ")
 # df,message=handle_nonnumeric_missing_vals(df,numericColumns)
@@ -383,17 +421,32 @@ df,message=drop_columns_from_string(df,columnsToBeDropped)
 print(df)
 print(message)
 
-df,message=normalize_date_column(df,"joiningdate")
+# df,message=normalize_date_column(df,"joiningdate")
+# print(df)
+# print(message)
+
+df_type=get_column_datatypes(df);
+print(df_type)
+
+df,message=one_hot_encoding(df,"fetal_health")
+print(df)
+print(message)
+
+
+df_type=get_column_datatypes(df);
+print(df_type)
+
+df,message=drop_rows_without_target(df,"fetal_health")
+print(df)
+print(message)
+
+df,message=convert_to_numeric(df,"fetal_health")
 print(df)
 print(message)
 
 df_type=get_column_datatypes(df);
 print(df_type)
 
-df=one_hot_encoding(df,"performancerating")
+df,message=remove_duplicates(df)
 print(df)
-
-
-df_type=get_column_datatypes(df);
-print(df_type)
-
+print(message)
