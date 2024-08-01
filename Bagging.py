@@ -1,95 +1,61 @@
 import pandas as pd
-import warnings
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import BaggingClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import joblib
+import numpy as np
 
+# Load the saved label encoder
+label_encoder = joblib.load('label_encoder.pkl')
+print("Label encoder loaded from 'label_encoder.pkl'.")
 
-warnings.filterwarnings('ignore')
+# Load the saved Random Forest model
+rf_clf = joblib.load('random_forest_model.pkl')
+print("Random Forest model loaded from 'random_forest_model.pkl'.")
 
-def load_data(file_name):
-    try:
-        data = pd.read_csv(file_name)
-        return data
-    except Exception as e:
-        print(f"Error occurred while loading the data from {file_name}: ", str(e))
+# Load the new data
+new_data = pd.read_csv("HACKATHON-MODEL/fetal_health_modified.csv")
 
-def train_bagging_classifier(train_data):
-    try:
-        X_train = train_data.drop(columns=['target'])  # Features
-        y_train = train_data['target']  # Target variable
+# Load the original training feature columns
+X_train = pd.read_csv("X_train.csv")
 
-        # Define parameters for the Bagging Classifier
-        criterion = 'gini'
-        max_depth = None
-        n_estimators = 10
+# Ensure new data contains the same features as the training data
+required_features = X_train.columns
+
+# Remove any target column if present
+required_features = [col for col in required_features if col != 'fetal_health']
+
+# Check if all required features are present in the new data
+missing_features = [feature for feature in required_features if feature not in new_data.columns]
+if missing_features:
+    raise ValueError(f"The following required features are missing from the new data: {missing_features}")
+
+# Ensure new_data only contains the required features
+X_new = new_data[required_features]
+
+# Make predictions using the loaded Random Forest model
+predictions = rf_clf.predict(X_new)
+
+# Check for unseen labels in predictions
+seen_labels = set(label_encoder.transform(label_encoder.classes_))
+unseen_labels = set(predictions) - seen_labels
+
+if unseen_labels:
+    print(f"Unseen labels in predictions: {unseen_labels}")
     
-        # Initialize the base Decision Tree classifier
-        base_clf = DecisionTreeClassifier(criterion=criterion, max_depth=max_depth, random_state=42)
-        
-        # Initialize and train the Bagging classifier
-        bagging_clf = BaggingClassifier(base_estimator=base_clf, n_estimators=n_estimators, random_state=42)
-        bagging_clf.fit(X_train, y_train)
-
-        # Make predictions on the training data
-        y_train_pred = bagging_clf.predict(X_train)
-        
-        return bagging_clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred
-    except Exception as e:
-        print("Error occurred while training the bagging classifier: ", str(e))
-
-
-def evaluate_classifier(clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred, X_test, y_test):
-    try:
-        # Make predictions on the testing data
-        y_test_pred = clf.predict(X_test)
-
-        # Evaluate the model's performance
-        train_accuracy = accuracy_score(y_train, y_train_pred)
-        test_accuracy = accuracy_score(y_test, y_test_pred)
-        
-        train_report = classification_report(y_train, y_train_pred)
-        test_report = classification_report(y_test, y_test_pred)
-        
-        train_matrix = confusion_matrix(y_train, y_train_pred)
-        test_matrix = confusion_matrix(y_test, y_test_pred)
-        
-        # Output the criterion, max depth, number of estimators, and performance
-        print(f"CRITERION: {criterion}")
-        print(f"MAX_DEPTH: {max_depth}")
-        print(f"N_ESTIMATORS: {n_estimators}")
-        print(f"TRAINING ACCURACY: {train_accuracy * 100:.2f}%")
-        print(f"TESTING ACCURACY: {test_accuracy * 100:.2f}%")
-        print("\nTraining Classification Report:\n", train_report)
-        print("\nTesting Classification Report:\n", test_report)
-        print("\nTraining Confusion Matrix:\n", train_matrix)
-        print("\nTesting Confusion Matrix:\n", test_matrix)
-        
-        # Save the trained model to a file
-        model_filename = 'bagging_decision_tree_model.pkl'
-        joblib.dump(clf, model_filename)
-        print(f"Trained model saved as {model_filename}")
-    except Exception as e:
-        print("Error occurred while evaluating the bagging classifier: ", str(e))
-
-
-
-
-if __name__ == "__main__":
-
-    train_file = 'X_train_Y_train.csv'
-    test_file = 'X_test_Y_test.csv'
+    # Find the most common class in the training data
+    most_common_class = pd.Series(label_encoder.transform(label_encoder.classes_)).mode()[0]
     
-    # Load data
-    train_data = load_data(train_file)
-    test_data = load_data(test_file)
-    
-    # Train the Bagging classifier
-    clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred = train_bagging_classifier(train_data)
-    
-    # Evaluate the Bagging classifier
-    X_test = test_data.drop(columns=['target'])  # Features
-    y_test = test_data['target']  # Target variable
-    evaluate_classifier(clf, criterion, max_depth, n_estimators, X_train, y_train, y_train_pred, X_test, y_test)
+    # Map unseen labels to the most common class
+    predictions = np.where(np.isin(predictions, list(unseen_labels)), most_common_class, predictions)
 
+# Inverse transform the predictions to get original labels
+original_predictions = label_encoder.inverse_transform(predictions)
+
+# Add predictions to the new data for reference
+new_data['predicted_fetal_health'] = predictions
+new_data['original_predicted_fetal_health'] = original_predictions
+
+# Print the DataFrame with predictions
+print(new_data.head())
+
+# Save the DataFrame with predictions
+new_data.to_csv("HACKATHON-MODEL/fetal_health_predictions.csv", index=False)
+print("Predictions saved to 'HACKATHON-MODEL/fetal_health_predictions.csv'.")
