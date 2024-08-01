@@ -3,13 +3,17 @@ import joblib
 import numpy as np
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+# Load the label encoder and Random Forest model
 label_encoder = joblib.load('label_encoder.pkl')
 print("Label encoder loaded from 'label_encoder.pkl'.")
 
 rf_clf = joblib.load('random_forest_model.pkl')
 print("Random Forest model loaded from 'random_forest_model.pkl'.")
+
+# Load the new data
 new_data = pd.read_csv("HACKATHON-MODEL/fetal_health_modified.csv")
 
+# Load training data to get the required features
 X_train = pd.read_csv("X_train.csv")
 required_features = X_train.columns
 
@@ -44,7 +48,7 @@ if unseen_labels:
     predictions = np.where(np.isin(predictions, list(unseen_labels)), most_common_class, predictions)
 
 # Inverse transform the predictions to get original labels
-original_predictions = label_encoder.inverse_transform(predictions)
+original_predictions = label_encoder.inverse_transform(predictions.astype(int))
 
 # Add predictions to the new data for reference
 new_data['predicted_fetal_health'] = predictions

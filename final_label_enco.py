@@ -12,10 +12,10 @@ rf_clf = joblib.load('random_forest_model.pkl')
 print("Random Forest model loaded from 'random_forest_model.pkl'.")
 
 # Load the new data
-new_data = pd.read_csv("HACKATHON-MODEL/fetal_health_new.csv")
+new_data = pd.read_csv("HACKATHON-MODEL/fetal_health_modified.csv")
 
 # Load the original training feature columns
-X_train = pd.read_csv("HACKATHON-MODEL/X_train.csv")
+X_train = pd.read_csv("X_train.csv")
 
 # Ensure new data contains the same features as the training data
 required_features = X_train.columns
