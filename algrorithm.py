@@ -1,13 +1,13 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 import warnings
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import joblib
+from sklearn.ensemble import RandomForestClassifier
 import pickle
-
-from sklearn.model_selection import train_test_split
+import os
 from sklearn.preprocessing import LabelEncoder
-warnings.filterwarnings('ignore')
 
 def save_target_variable(path,target_column,file_name='target_var_label_enc_status.pickle'):
     # Load the DataFrame
@@ -48,18 +48,7 @@ def save_target_variable(path,target_column,file_name='target_var_label_enc_stat
             'status': status
         }
         return result
-    
 
-
-# def load_target_variable(file_name='target_var_label_enc_status.pickle'):
-#     try:
-#         # Load the target variable from the pickle file
-#         with open(file_name, 'rb') as file:
-#             target_values = pickle.load(file)
-#         return target_values, f"Target variable has been successfully loaded from '{file_name}'."
-#     except Exception as e:
-#         return None, f"An error occurred while loading the target variable: {e}"
-    
 
 def update_encoder_status(str_val,file_name='target_var_label_enc_status.pickle'):
     data = None
@@ -177,14 +166,111 @@ def split_and_save_data(path, train_size_percentage, file_path='target_var_label
         return result
 
 
-target_var = input("Enter target varaible name: ")
-path="fetal_health_encoded.csv"
-save_target_variable(path,target_var)
+def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_depth=None,min_samples_split="2",code=""):
+    n_estimators=int(n_estimators)
+    # max_depth=int(max_depth) check if 0
+    min_samples_split=int(min_samples_split)
+
+    if enco_status==0:
+
+        X_train = df_train.drop(columns=[target])  # Features
+        y_train = df_train[target] 
+
+        X_test = df_test.drop(columns=[target])
+        y_test=df_test[target]
+
+        rf_clf = RandomForestClassifier(n_estimators=n_estimators,max_depth=max_depth,min_samples_split=min_samples_split)
+        rf_clf.fit(X_train, y_train)
+
+        y_train_pred = rf_clf.predict(X_train)
+        y_test_pred = rf_clf.predict(X_test)
+
+        train_accuracy = accuracy_score(y_train, y_train_pred)
+        test_accuracy = accuracy_score(y_test, y_test_pred)
+
+        model_filename = f"output/{code}_svm_model.pkl"
+        os.makedirs('output', exist_ok=True)
+        joblib.dump(model, model_filename)
+        print(f"Trained model saved as {model_filename}")
+        return train_accuracy,test_accuracy
+
+    else:
+        le = LabelEncoder()
+        df_train[target] = le.fit_transform(df_train[target])
+        df_test[target] = le.transform(df_test[target])
+
+        X_train = df_train.drop(columns=[target])
+        y_train = df_train[target]
+        X_test = df_test.drop(columns=[target])
+        y_test = df_test[target]
+        
+        model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split)
+        model.fit(X_train, y_train)
+
+        # Calculate train and test accuracy
+        train_accuracy = accuracy_score(y_train, model.predict(X_train))
+        test_accuracy = accuracy_score(y_test, model.predict(X_test))
+
+        # Save the model
+        model_filename = f"output/{code}_random_forest_model.pkl"
+        os.makedirs('output', exist_ok=True)
+        joblib.dump(model, model_filename)
+        print(f"Trained model saved as {model_filename}")
 
 
-str=input("Enter 'yes' if target values are categorigal data and 'no' for non categorical data: ")
-update_encoder_status(str)
 
-trainpercen=input("Enter the % of training data: ")
-response=split_and_save_data(path,trainpercen)
-# print(response)
+
+
+
+
+
+
+# def svm():
+    pass
+# def decision_tree():
+#     pass
+
+
+
+
+def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status.pickle',train_file='XY_train.csv',test_file='XY_test.csv',code=''):
+    # Load data
+    df_train = pd.read_csv(train_file)
+    df_test = pd.read_csv(test_file)
+    enco_status, target = read_target_var_label_enc_status(file_name)[0]
+    # enco_status is a string
+
+
+
+
+    if model_name == 'random_forest':
+        train_accuracy, test_accuracy = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code="")
+    # elif model_name == 'svm':
+    #     train_accuracy, test_accuracy,message,status  = svm(df_train, df_test)
+    # elif model_name == 'decision_tree':
+    #     train_accuracy, test_accuracy,message,status  = decision_tree(df_train, df_test)
+    # else:
+    #     raise ValueError(f"Unknown model code: {model_name}")
+
+    status="succ"
+    message="works"
+    data={
+        'accuracy_train':train_accuracy,
+        'accuracy_test':test_accuracy,
+    }
+    response={
+        'data':data,
+        'status':status,
+        'message':message
+        }
+    return response
+
+
+
+
+model_name='random_forest'
+param1='100'
+param2=None
+param3='2'
+response=model(model_name,param1,param2,param3)
+print(response)
