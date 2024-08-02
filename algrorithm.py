@@ -171,51 +171,74 @@ def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_dep
     # max_depth=int(max_depth) check if 0
     min_samples_split=int(min_samples_split)
 
-    if enco_status==0:
+    status = "success"
+    message = ""
+    data = None
+    try:
+        if enco_status==0:
 
-        X_train = df_train.drop(columns=[target])  # Features
-        y_train = df_train[target] 
+            X_train = df_train.drop(columns=[target])  # Features
+            y_train = df_train[target] 
 
-        X_test = df_test.drop(columns=[target])
-        y_test=df_test[target]
+            X_test = df_test.drop(columns=[target])
+            y_test=df_test[target]
 
-        rf_clf = RandomForestClassifier(n_estimators=n_estimators,max_depth=max_depth,min_samples_split=min_samples_split)
-        rf_clf.fit(X_train, y_train)
+            rf_clf = RandomForestClassifier(n_estimators=n_estimators,max_depth=max_depth,min_samples_split=min_samples_split)
+            rf_clf.fit(X_train, y_train)
 
-        y_train_pred = rf_clf.predict(X_train)
-        y_test_pred = rf_clf.predict(X_test)
+            y_train_pred = rf_clf.predict(X_train)
+            y_test_pred = rf_clf.predict(X_test)
 
-        train_accuracy = accuracy_score(y_train, y_train_pred)
-        test_accuracy = accuracy_score(y_test, y_test_pred)
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
 
-        model_filename = f"output/{code}_svm_model.pkl"
-        os.makedirs('output', exist_ok=True)
-        joblib.dump(model, model_filename)
-        print(f"Trained model saved as {model_filename}")
-        return train_accuracy,test_accuracy
+            model_filename = f"output/{code}_random_forest.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(model, model_filename)
+            message = f"Trained model saved as {model_filename}"
+            
 
-    else:
-        le = LabelEncoder()
-        df_train[target] = le.fit_transform(df_train[target])
-        df_test[target] = le.transform(df_test[target])
+        else:
+            le = LabelEncoder()
+            df_train[target] = le.fit_transform(df_train[target])
+            df_test[target] = le.transform(df_test[target])
 
-        X_train = df_train.drop(columns=[target])
-        y_train = df_train[target]
-        X_test = df_test.drop(columns=[target])
-        y_test = df_test[target]
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+            
+            model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split)
+            model.fit(X_train, y_train)
+
+            # Calculate train and test accuracy
+            train_accuracy = accuracy_score(y_train, model.predict(X_train))
+            test_accuracy = accuracy_score(y_test, model.predict(X_test))
+
+            # Save the model
+            model_filename = f"output/{code}_enco_random_forest.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(model, model_filename)
+            message = f"Trained model saved as {model_filename}"
         
-        model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split)
-        model.fit(X_train, y_train)
-
-        # Calculate train and test accuracy
-        train_accuracy = accuracy_score(y_train, model.predict(X_train))
-        test_accuracy = accuracy_score(y_test, model.predict(X_test))
-
-        # Save the model
-        model_filename = f"output/{code}_random_forest_model.pkl"
-        os.makedirs('output', exist_ok=True)
-        joblib.dump(model, model_filename)
-        print(f"Trained model saved as {model_filename}")
+        return {
+            'data': {
+                'train_accuracy': train_accuracy,
+                'test_accuracy': test_accuracy
+            },
+            'status': status,
+            'message': message
+        }
+    
+    except Exception as e:
+        # Handle exceptions and return error message
+        return {
+            'data': None,
+            'status': "error",
+            'message': f"An error occurred: {e}"
+        }
+        
+        
 
 
 
@@ -244,7 +267,7 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
 
 
     if model_name == 'random_forest':
-        train_accuracy, test_accuracy = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code="")
+        response = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code="")
     # elif model_name == 'svm':
     #     train_accuracy, test_accuracy,message,status  = svm(df_train, df_test)
     # elif model_name == 'decision_tree':
@@ -252,19 +275,7 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
     # else:
     #     raise ValueError(f"Unknown model code: {model_name}")
 
-    status="succ"
-    message="works"
-    data={
-        'accuracy_train':train_accuracy,
-        'accuracy_test':test_accuracy,
-    }
-    response={
-        'data':data,
-        'status':status,
-        'message':message
-        }
     return response
-
 
 
 
