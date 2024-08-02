@@ -449,8 +449,8 @@ print(response)
 # param2= min_samples_split only nos
 #param3= criterion ['gini', 'entropy', 'log_loss']
 model_name='decision_tree'
-param1="100"
-param2="100"
-param3="gini"
+param1="10"
+param2="10"
+param3="entropy"
 response=model(model_name,param1,param2,param3)
 print(response)
