@@ -1,13 +1,16 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import joblib
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import BaggingClassifier, RandomForestClassifier
 import pickle
 import os
 from sklearn.preprocessing import LabelEncoder
+import xgboost as xgb
+from sklearn.metrics import accuracy_score, mean_squared_error
 
 def save_target_variable(path,target_column,file_name='target_var_label_enc_status.pickle'):
     # Load the DataFrame
@@ -245,13 +248,165 @@ def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_dep
 
 
 
+def xgboost(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6',learning_rate="0.3",code=""):
+    n_estimators=int(n_estimators)
+    max_depth=int(max_depth)
+    learning_rate=float(learning_rate)
+
+    status = "success"
+    message = ""
+    data = None
+    try:
+        if enco_status==0:
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+
+            xg_clf = xgboost.XGBClassifier(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate)
+            model.fit(X_train, y_train)
+
+            y_train_pred = model.predict(X_train)
+            y_test_pred = model.predict(X_test)
+
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
+
+            train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+            test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+
+            model_filename = f"output/{code}_xgboost_model.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(xg_clf, model_filename)
+            print(f"Trained model saved as {model_filename}")
+
+        else:
+            le = LabelEncoder()
+            df_train[target] = le.fit_transform(df_train[target])
+            df_test[target] = le.transform(df_test[target])
+
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+
+
+            xg_clf = xgb.XGBClassifier(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate)
+            xg_clf.fit(X_train, y_train)
+
+            y_train_pred = xg_clf.predict(X_train)
+            y_test_pred = xg_clf.predict(X_test)
+
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
+
+            train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+            test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+
+            model_filename = f"output/{code}_enco_xgboost_model.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(xg_clf, model_filename)
+            print(f"Trained model saved as {model_filename}")
+
+        return {
+            'data': {
+                'train_accuracy': train_accuracy,
+                'test_accuracy': test_accuracy
+            },
+            'status': status,
+            'message': message
+        }
+    
+    except Exception as e:
+        # Handle exceptions and return error message
+        return {
+            'data': None,
+            'status': "error",
+            'message': f"An error occurred: {e}"
+        }
+
+
+def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6',criterion="gini",code=""):
+    n_estimators=int(n_estimators)
+    max_depth=int(max_depth)
+
+    status = "success"
+    message = ""
+    data = None
+    try:
+        if enco_status==0:
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+
+            base_estimator = DecisionTreeClassifier(max_depth=max_depth, criterion=criterion)
+            bag_clf = BaggingClassifier(base_estimator=base_estimator, n_estimators=n_estimators, random_state=42)
+            bag_clf.fit(X_train, y_train)
+
+            y_train_pred = bag_clf.predict(X_train)
+            y_test_pred = bag_clf.predict(X_test)
+            
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
+
+
+            train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+            test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+
+            model_filename = f"output/{code}_bagging_model.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(bag_clf, model_filename)
+            print(f"Trained model saved as {model_filename}")
+
+        else:
+            le = LabelEncoder()
+            df_train[target] = le.fit_transform(df_train[target])
+            df_test[target] = le.transform(df_test[target])
+
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+
+            base_estimator = DecisionTreeClassifier(max_depth=max_depth, criterion=criterion)
+            bag_clf = BaggingClassifier(base_estimator=base_estimator, n_estimators=n_estimators, random_state=42)
+            bag_clf.fit(X_train, y_train)
+
+            y_train_pred = bag_clf.predict(X_train)
+            y_test_pred = bag_clf.predict(X_test)
+            
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
+
+
+            train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+            test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+
+            model_filename = f"output/{code}_enco_bagging_model.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(bag_clf, model_filename)
+            print(f"Trained model saved as {model_filename}")
+
+        return {
+            'data': {
+                'train_accuracy': train_accuracy,
+                'test_accuracy': test_accuracy
+            },
+            'status': status,
+            'message': message
+        }
+    
+    except Exception as e:
+        # Handle exceptions and return error message
+        return {
+            'data': None,
+            'status': "error",
+            'message': f"An error occurred: {e}"
+        }
 
 
 
-# def svm():
-    pass
-# def decision_tree():
-#     pass
 
 
 
@@ -268,10 +423,10 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
 
     if model_name == 'random_forest':
         response = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code="")
-    # elif model_name == 'svm':
-    #     train_accuracy, test_accuracy,message,status  = svm(df_train, df_test)
-    # elif model_name == 'decision_tree':
-    #     train_accuracy, test_accuracy,message,status  = decision_tree(df_train, df_test)
+    elif model_name == 'xgboost':
+       response = xgboost(target,enco_status,df_train,df_test,param1,param2,param3,code="")
+    elif model_name == 'bagging':
+        response  = bagging(target,enco_status,df_train,df_test,param1,param2,param3,code="")
     # else:
     #     raise ValueError(f"Unknown model code: {model_name}")
 
@@ -279,9 +434,11 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
 
 
 
-model_name='random_forest'
-param1='100'
-param2=None
-param3='2'
+
+
+model_name='bagging'
+param1='10'
+param2='4'
+param3='gini'
 response=model(model_name,param1,param2,param3)
 print(response)
