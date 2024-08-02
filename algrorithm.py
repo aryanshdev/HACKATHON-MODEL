@@ -5,6 +5,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import joblib
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 import pickle
 import os
 from sklearn.preprocessing import LabelEncoder
@@ -166,7 +168,7 @@ def split_and_save_data(path, train_size_percentage, file_path='target_var_label
         return result
 
 
-def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_depth=None,min_samples_split="2",code=""):
+def random_forest(target,enco_status,df_train,df_test,n_estimators,max_depth,min_samples_split,code=""):
     n_estimators=int(n_estimators)
     # max_depth=int(max_depth) check if 0
     min_samples_split=int(min_samples_split)
@@ -194,7 +196,7 @@ def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_dep
 
             model_filename = f"output/{code}_random_forest.pkl"
             os.makedirs('output', exist_ok=True)
-            joblib.dump(model, model_filename)
+            joblib.dump(rf_clf, model_filename)
             message = f"Trained model saved as {model_filename}"
             
 
@@ -208,17 +210,17 @@ def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_dep
             X_test = df_test.drop(columns=[target])
             y_test = df_test[target]
             
-            model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split)
-            model.fit(X_train, y_train)
+            rl_clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split)
+            rl_clf.fit(X_train, y_train)
 
             # Calculate train and test accuracy
-            train_accuracy = accuracy_score(y_train, model.predict(X_train))
-            test_accuracy = accuracy_score(y_test, model.predict(X_test))
+            train_accuracy = accuracy_score(y_train, rl_clf.predict(X_train))
+            test_accuracy = accuracy_score(y_test, rl_clf.predict(X_test))
 
             # Save the model
             model_filename = f"output/{code}_enco_random_forest.pkl"
             os.makedirs('output', exist_ok=True)
-            joblib.dump(model, model_filename)
+            joblib.dump(rl_clf, model_filename)
             message = f"Trained model saved as {model_filename}"
         
         return {
@@ -253,7 +255,151 @@ def random_forest(target,enco_status,df_train,df_test,n_estimators="100",max_dep
 # def decision_tree():
 #     pass
 
+# Define dropdown for [kernel poly, rbf, sigmoid] and text box for gamma and c
+def svm(target,enco_status,df_train,df_test,kernel,c,gamma,code=""):
+    c=float(c)
+    gamma=float(gamma)
+    kernel=kernel
 
+    status = "success"
+    message = ""
+    data = None
+    try:
+        if enco_status==0:
+
+            X_train = df_train.drop(columns=[target])  # Features
+            y_train = df_train[target] 
+
+            X_test = df_test.drop(columns=[target])
+            y_test=df_test[target]
+
+            svm_clf = SVC(kernel=kernel,C=c,gamma=gamma)
+            svm_clf.fit(X_train, y_train)
+
+            y_train_pred = svm_clf.predict(X_train)
+            y_test_pred = svm_clf.predict(X_test)
+
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
+
+            model_filename = f"output/{code}_svm.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(svm_clf, model_filename)
+            message = f"Trained model saved as {model_filename}"
+            
+
+        else:
+            le = LabelEncoder()
+            df_train[target] = le.fit_transform(df_train[target])
+            df_test[target] = le.transform(df_test[target])
+
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+            
+            svm_clf = SVC(kernel=kernel,C=c,gamma=gamma)
+            svm_clf.fit(X_train, y_train)
+
+            # Calculate train and test accuracy
+            train_accuracy = accuracy_score(y_train, svm_clf.predict(X_train))
+            test_accuracy = accuracy_score(y_test, svm_clf.predict(X_test))
+
+            # Save the model
+            model_filename = f"output/{code}_enco_svm.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(svm_clf, model_filename)
+            message = f"Trained model saved as {model_filename}"
+        
+        return {
+            'data': {
+                'train_accuracy': train_accuracy,
+                'test_accuracy': test_accuracy
+            },
+            'status': status,
+            'message': message
+        }
+    
+    except Exception as e:
+        # Handle exceptions and return error message
+        return {
+            'data': None,
+            'status': "error",
+            'message': f"An error occurred: {e}"
+        }
+        
+# Define input for all[1,2,3,4,5...any no]
+def decision_tree(target,enco_status,df_train,df_test,max_depth,min_samples_split,criterion,code=""):
+    max_depth=int(max_depth)
+    min_samples_split=int(min_samples_split)
+
+    status = "success"
+    message = ""
+    data = None
+    try:
+        if enco_status==0:
+
+            X_train = df_train.drop(columns=[target])  # Features
+            y_train = df_train[target] 
+
+            X_test = df_test.drop(columns=[target])
+            y_test=df_test[target]
+
+            svm_clf = DecisionTreeClassifier(max_depth=max_depth,min_samples_split=min_samples_split,criterion=criterion)
+            svm_clf.fit(X_train, y_train)
+
+            y_train_pred = svm_clf.predict(X_train)
+            y_test_pred = svm_clf.predict(X_test)
+
+            train_accuracy = accuracy_score(y_train, y_train_pred)
+            test_accuracy = accuracy_score(y_test, y_test_pred)
+
+            model_filename = f"output/{code}_decision_tree.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(svm_clf, model_filename)
+            message = f"Trained model saved as {model_filename}"
+            
+
+        else:
+            le = LabelEncoder()
+            df_train[target] = le.fit_transform(df_train[target])
+            df_test[target] = le.transform(df_test[target])
+
+            X_train = df_train.drop(columns=[target])
+            y_train = df_train[target]
+            X_test = df_test.drop(columns=[target])
+            y_test = df_test[target]
+            
+            svm_clf = DecisionTreeClassifier(max_depth=max_depth,min_samples_split=min_samples_split,criterion=criterion)
+            svm_clf.fit(X_train, y_train)
+
+            # Calculate train and test accuracy
+            train_accuracy = accuracy_score(y_train, svm_clf.predict(X_train))
+            test_accuracy = accuracy_score(y_test, svm_clf.predict(X_test))
+
+            # Save the model
+            model_filename = f"output/{code}_enco_decision_tree.pkl"
+            os.makedirs('output', exist_ok=True)
+            joblib.dump(svm_clf, model_filename)
+            message = f"Trained model saved as {model_filename}"
+        
+        return {
+            'data': {
+                'train_accuracy': train_accuracy,
+                'test_accuracy': test_accuracy
+            },
+            'status': status,
+            'message': message
+        }
+    
+    except Exception as e:
+        # Handle exceptions and return error message
+        return {
+            'data': None,
+            'status': "error",
+            'message': f"An error occurred: {e}"
+        }
+        
 
 
 def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status.pickle',train_file='XY_train.csv',test_file='XY_test.csv',code=''):
@@ -261,21 +407,24 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
     df_train = pd.read_csv(train_file)
     df_test = pd.read_csv(test_file)
     enco_status, target = read_target_var_label_enc_status(file_name)[0]
+    code=""
     # enco_status is a string
 
 
 
 
     if model_name == 'random_forest':
-        response = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code="")
-    # elif model_name == 'svm':
-    #     train_accuracy, test_accuracy,message,status  = svm(df_train, df_test)
-    # elif model_name == 'decision_tree':
-    #     train_accuracy, test_accuracy,message,status  = decision_tree(df_train, df_test)
-    # else:
-    #     raise ValueError(f"Unknown model code: {model_name}")
+        response = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code)
+    elif model_name == 'svm':
+        response = svm(target,enco_status,df_train,df_test,param1,param2,param3,code)
+    elif model_name == 'decision_tree':
+        response = decision_tree(target,enco_status,df_train, df_test,param1,param2,param3,code)
+    else:
+        raise ValueError(f"Unknown model code: {model_name}")
 
     return response
+
+
 
 
 
@@ -283,5 +432,25 @@ model_name='random_forest'
 param1='100'
 param2=None
 param3='2'
+response=model(model_name,param1,param2,param3)
+print(response)
+
+# param1=kernel only rbf
+# param2= C [10^-3 to 10^3]
+#param3= gamma[same]
+model_name='svm'
+param1="rbf" #LOCKED VALUE
+param2="10"
+param3="10"
+response=model(model_name,param1,param2,param3)
+print(response)
+
+# param1=maxdepth only numbers
+# param2= min_samples_split only nos
+#param3= criterion ['gini', 'entropy', 'log_loss']
+model_name='decision_tree'
+param1="100"
+param2="100"
+param3="gini"
 response=model(model_name,param1,param2,param3)
 print(response)
