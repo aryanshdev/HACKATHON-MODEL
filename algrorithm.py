@@ -173,7 +173,10 @@ def split_and_save_data(path, train_size_percentage, file_path='target_var_label
 
 def random_forest(target,enco_status,df_train,df_test,n_estimators,max_depth,min_samples_split,code=""):
     n_estimators=int(n_estimators)
-    # max_depth=int(max_depth) check if 0
+    if(max_depth!="None"):
+        max_depth=int(max_depth)
+    else:
+        max_depth=None
     min_samples_split=int(min_samples_split)
 
     status = "success"
@@ -243,14 +246,8 @@ def random_forest(target,enco_status,df_train,df_test,n_estimators,max_depth,min
             'message': f"An error occurred: {e}"
         }
         
-        
 
-
-
-
-
-
-def xgboost(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6',learning_rate="0.3",code=""):
+def xgboost(target,enco_status,df_train,df_test,n_estimators,max_depth,learning_rate,code=""):
     n_estimators=int(n_estimators)
     max_depth=int(max_depth)
     learning_rate=float(learning_rate)
@@ -280,7 +277,7 @@ def xgboost(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             model_filename = f"output/{code}_xgboost_model.pkl"
             os.makedirs('output', exist_ok=True)
             joblib.dump(xg_clf, model_filename)
-            print(f"Trained model saved as {model_filename}")
+            message=f"Trained model saved as {model_filename}"
 
         else:
             le = LabelEncoder()
@@ -308,7 +305,7 @@ def xgboost(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             model_filename = f"output/{code}_enco_xgboost_model.pkl"
             os.makedirs('output', exist_ok=True)
             joblib.dump(xg_clf, model_filename)
-            print(f"Trained model saved as {model_filename}")
+            message=f"Trained model saved as {model_filename}"
 
         return {
             'data': {
@@ -328,9 +325,10 @@ def xgboost(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
         }
 
 
-def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6',criterion="gini",code=""):
+def bagging(target,enco_status,df_train,df_test,n_estimators,max_samples,max_features,code=""):
     n_estimators=int(n_estimators)
-    max_depth=int(max_depth)
+    max_samples=int(max_samples)
+    max_features=float(max_features)
 
     status = "success"
     message = ""
@@ -342,7 +340,7 @@ def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             X_test = df_test.drop(columns=[target])
             y_test = df_test[target]
 
-            base_estimator = DecisionTreeClassifier(max_depth=max_depth, criterion=criterion)
+            base_estimator = DecisionTreeClassifier()
             bag_clf = BaggingClassifier(base_estimator=base_estimator, n_estimators=n_estimators, random_state=42)
             bag_clf.fit(X_train, y_train)
 
@@ -359,7 +357,7 @@ def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             model_filename = f"output/{code}_bagging_model.pkl"
             os.makedirs('output', exist_ok=True)
             joblib.dump(bag_clf, model_filename)
-            print(f"Trained model saved as {model_filename}")
+            message = f"Trained model saved as {model_filename}"
 
         else:
             le = LabelEncoder()
@@ -371,8 +369,8 @@ def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             X_test = df_test.drop(columns=[target])
             y_test = df_test[target]
 
-            base_estimator = DecisionTreeClassifier(max_depth=max_depth, criterion=criterion)
-            bag_clf = BaggingClassifier(base_estimator=base_estimator, n_estimators=n_estimators, random_state=42)
+            base_estimator = DecisionTreeClassifier()
+            bag_clf = BaggingClassifier(estimator=base_estimator, n_estimators=n_estimators, max_samples=max_samples,max_features=max_features,random_state=42)
             bag_clf.fit(X_train, y_train)
 
             y_train_pred = bag_clf.predict(X_train)
@@ -388,8 +386,7 @@ def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             model_filename = f"output/{code}_enco_bagging_model.pkl"
             os.makedirs('output', exist_ok=True)
             joblib.dump(bag_clf, model_filename)
-            print(f"Trained model saved as {model_filename}")
-
+            message = f"Trained model saved as {model_filename}"
         return {
             'data': {
                 'train_accuracy': train_accuracy,
@@ -406,8 +403,6 @@ def bagging(target,enco_status,df_train,df_test,n_estimators="100",max_depth='6'
             'status': "error",
             'message': f"An error occurred: {e}"
         }
-
-
 
 
 # Define dropdown for [kernel poly, rbf, sigmoid] and text box for gamma and c
@@ -587,17 +582,24 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
 
 
 
+model_name='xgboost'
+param1='100'
+param2='3'
+param3='0.5'
+response=model(model_name,param1,param2,param3)
+print(response)
+
 
 model_name='bagging'
-param1='10'
-param2='4'
-param3='gini'
+param1='100'
+param2='10'
+param3='0.5'
 response=model(model_name,param1,param2,param3)
 print(response)
 
 model_name='random_forest'
 param1='100'
-param2=None
+param2='None'
 param3='2'
 response=model(model_name,param1,param2,param3)
 print(response)
