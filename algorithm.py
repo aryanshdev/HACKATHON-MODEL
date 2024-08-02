@@ -14,12 +14,16 @@ from sklearn.preprocessing import LabelEncoder
 
 
 
-def save_target_variable(path,target_column,file_name='target_var_label_enc_status.pickle'):
+def save_target_variable(path,target_column,code=""):
     # Load the DataFrame
     df = pd.read_csv(path)
     data = None
     message = ""
     status = ""
+    file_name=f"intermediate/{code}_target_var_label_enc_status.pickle"
+
+    # Ensure the intermediate folder exists
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
     if target_column not in df.columns:
         message = f"Target column '{target_column}' not found in DataFrame."
@@ -55,10 +59,10 @@ def save_target_variable(path,target_column,file_name='target_var_label_enc_stat
         return result
 
 
-def update_encoder_status(str_val,file_name='target_var_label_enc_status.pickle'):
+def update_encoder_status(str_val,code=""):
     data = None
     status = ""
-    
+    file_name=f"intermediate/{code}_target_var_label_enc_status.pickle"
     if str_val.lower() not in ["yes", "no"]:
         status = "err"
         message = "Invalid string value. Please use 'yes' or 'no'."
@@ -78,7 +82,7 @@ def update_encoder_status(str_val,file_name='target_var_label_enc_status.pickle'
         encoder_status = 1 if str_val.lower() == "yes" else 0
 
         # Save the encoder status and target column name to the new pickle file
-        with open('target_var_label_enc_status.pickle', 'wb') as file:
+        with open(file_name, 'wb') as file:
             pickle.dump((encoder_status, target_column_name), file)
         
         status = "succ"
@@ -103,8 +107,8 @@ def update_encoder_status(str_val,file_name='target_var_label_enc_status.pickle'
     
     
 
-def read_target_var_label_enc_status(file_path='target_var_label_enc_status.pickle'):
-
+def read_target_var_label_enc_status(code=""):
+    file_path=f"intermediate/{code}_target_var_label_enc_status.pickle"
     try:
         # Load the status and target variable from the pickle file
         with open(file_path, 'rb') as file:
@@ -119,7 +123,9 @@ def read_target_var_label_enc_status(file_path='target_var_label_enc_status.pick
 def split_and_save_data(path, train_size_percentage, file_path='target_var_label_enc_status.pickle',code=''):
     data= None
     status="err"
-    target_column=read_target_var_label_enc_status(file_path)[0][1]
+    file_path=f"intermediate/{code}_target_var_label_enc_status.pickle"
+    target_column=read_target_var_label_enc_status(code)[0][1]
+    print(target_column)
     train_size_percentage=int(train_size_percentage)
     if not 0 < train_size_percentage < 100:
         message="Error: Training size percentage must be between 0 and 100."
@@ -142,13 +148,16 @@ def split_and_save_data(path, train_size_percentage, file_path='target_var_label
             random_state=42
         )
 
+        os.makedirs(os.path.dirname(f"intermediate/{code}_XY_train.csv"), exist_ok=True)
+        os.makedirs(os.path.dirname(f"intermediate/{code}_XY_test.csv"), exist_ok=True)
+
         # Concatenate features and target
         train_df = pd.concat([X_train.reset_index(drop=True), y_train.reset_index(drop=True)], axis=1)
         test_df = pd.concat([X_test.reset_index(drop=True), y_test.reset_index(drop=True)], axis=1)
 
         # Save to CSV files
-        train_df.to_csv(f'{code}XY_train.csv', index=False)
-        test_df.to_csv(f'{code}XY_test.csv', index=False)
+        train_df.to_csv(f'intermediate/{code}_XY_train.csv', index=False)
+        test_df.to_csv(f'intermediate/{code}_XY_test.csv', index=False)
         
 
         status="succ"
@@ -552,11 +561,12 @@ def decision_tree(target,enco_status,df_train,df_test,max_depth,min_samples_spli
         
 
 
-def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status.pickle',train_file='XY_train.csv',test_file='XY_test.csv',code=''):
+def model(model_name,param1,param2,param3,train_file='XY_train.csv',test_file='XY_test.csv',code=''):
     # Load data
+    file_name=f'intermediate/{code}_target_var_label_enc_status.pickle'
     df_train = pd.read_csv(train_file)
     df_test = pd.read_csv(test_file)
-    enco_status, target = read_target_var_label_enc_status(file_name)[0]
+    enco_status, target = read_target_var_label_enc_status(code)[0]
     code=""
     # enco_status is a string
 
@@ -566,9 +576,9 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
     if model_name == 'random_forest':
         response = random_forest(target,enco_status,df_train,df_test,param1,param2,param3,code)
     elif model_name == 'xgboost':
-       response = xgboost(target,enco_status,df_train,df_test,param1,param2,param3,code="")
+       response = xgboost(target,enco_status,df_train,df_test,param1,param2,param3,code)
     elif model_name == 'bagging':
-        response  = bagging(target,enco_status,df_train,df_test,param1,param2,param3,code="")
+        response  = bagging(target,enco_status,df_train,df_test,param1,param2,param3,code)
     elif model_name == 'svm':
         response = svm(target,enco_status,df_train,df_test,param1,param2,param3,code)
     elif model_name == 'decision_tree':
@@ -579,47 +589,62 @@ def model(model_name,param1,param2,param3,file_name='target_var_label_enc_status
     return response
 
 
+# ---------------------------------------------------TESTING SPLITS------------------------------------------------------#
 
 
-
-model_name='xgboost'
-param1='100'
-param2='3'
-param3='0.5'
-response=model(model_name,param1,param2,param3)
-print(response)
+# target_var = input("Enter target varaible name: ")
+# path="fetal_health_encoded.csv"
+# save_target_variable(path,target_var)
 
 
-model_name='bagging'
-param1='100'
-param2='10'
-param3='0.5'
-response=model(model_name,param1,param2,param3)
-print(response)
+# str=input("Enter 'yes' if target values are categorigal data and 'no' for non categorical data: ")
+# update_encoder_status(str)
 
-model_name='random_forest'
-param1='100'
-param2='None'
-param3='2'
-response=model(model_name,param1,param2,param3)
-print(response)
+# trainpercen=input("Enter the % of training data: ")
+# response=split_and_save_data(path,trainpercen)
+# # print(response)
 
-# param1=kernel only rbf
-# param2= C [10^-3 to 10^3]
-#param3= gamma[same]
-model_name='svm'
-param1="rbf" #LOCKED VALUE
-param2="10"
-param3="10"
-response=model(model_name,param1,param2,param3)
-print(response)
 
-# param1=maxdepth only numbers
-# param2= min_samples_split only nos
-#param3= criterion ['gini', 'entropy', 'log_loss']
-model_name='decision_tree'
-param1="10"
-param2="10"
-param3="entropy"
-response=model(model_name,param1,param2,param3)
-print(response)
+# ---------------------------------------------------TESTING MODELS------------------------------------------------------#
+
+# model_name='xgboost'
+# param1='100'
+# param2='3'
+# param3='0.5'
+# response=model(model_name,param1,param2,param3)
+# print(response)
+
+
+# model_name='bagging'
+# param1='100'
+# param2='10'
+# param3='0.5'
+# response=model(model_name,param1,param2,param3)
+# print(response)
+
+# model_name='random_forest'
+# param1='100'
+# param2='None'
+# param3='2'
+# response=model(model_name,param1,param2,param3)
+# print(response)
+
+# # param1=kernel only rbf
+# # param2= C [10^-3 to 10^3]
+# #param3= gamma[same]
+# model_name='svm'
+# param1="rbf" #LOCKED VALUE
+# param2="10"
+# param3="10"
+# response=model(model_name,param1,param2,param3)
+# print(response)
+
+# # param1=maxdepth only numbers
+# # param2= min_samples_split only nos
+# #param3= criterion ['gini', 'entropy', 'log_loss']
+# model_name='decision_tree'
+# param1="10"
+# param2="10"
+# param3="entropy"
+# response=model(model_name,param1,param2,param3)
+# print(response)
